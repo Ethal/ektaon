@@ -1,0 +1,8 @@
+name_a,lat_a,lon_a,name_b,lat_b,lon_b
+Paris,48.858056,2.294500,Lyon,45.764043,4.835659
+Eiffel Tower,48.858056,2.294500,Copy of Eiffel,48.858056,2.294500
+Point A,48.858056,2.294500,Point A Micro,48.8580560001,2.2945000001
+Equator Start,0.0,0.0,Equator End,0.0,1.0
+North Pole,90.0,0.0,South Pole,-90.0,0.0
+Greenwich,0.0,0.0,Pacific Antipode,0.0,180.0
+East Side,10.0,179.0,West Side,10.0,-179.0
