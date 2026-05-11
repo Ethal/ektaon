@@ -1,5 +1,5 @@
 // src/main.rs
-
+#![allow(clippy::too_many_arguments)]
 /*
 ARCHITECTURE OVERVIEW
 
@@ -28,7 +28,6 @@ Key design choices:
 
 The main module focuses on orchestration and I/O only.
 */
-
 use clap::Parser;
 use csv::{ReaderBuilder, Writer};
 use std::collections::HashSet;
@@ -43,13 +42,11 @@ mod util;
 
 use crate::{
     error::AppError,
-    geo::{coordinate::CoordinateKind, ddm::ddm_to_dd, dms::dms_to_dd},
-    models::{
-        geo::{DistanceMetrics, NormalizedGeo},
-        input::{InputDecimal, InputString},
+    models::input::{InputDecimal, InputString},
+    pipeline::{
+        parser::{parse_ddm_row, parse_dms_row},
+        process::{build_normalized_geo, process_geo},
     },
-    pipeline::{normalized::build_normalized_geo, writer::write_output},
-    util::{GeoTolerance, KM_TO_MILES, Nearly, haversine, round},
 };
 
 /* ---------------- CONSTANTES ---------------- */
@@ -102,15 +99,11 @@ fn main() -> Result<(), AppError> {
                 };
 
                 // Parse DMS coordinates.
-                let (lat_a_dd, lon_a_dd, lat_b_dd, lon_b_dd) = match (
-                    dms_to_dd(&r.lat_a, CoordinateKind::Latitude),
-                    dms_to_dd(&r.lon_a, CoordinateKind::Longitude),
-                    dms_to_dd(&r.lat_b, CoordinateKind::Latitude),
-                    dms_to_dd(&r.lon_b, CoordinateKind::Longitude),
-                ) {
-                    (Ok(a), Ok(b), Ok(c), Ok(d)) => (a, b, c, d),
-                    (Err(e), _, _, _) | (_, Err(e), _, _) | (_, _, Err(e), _) | (_, _, _, Err(e)) => {
+                let (lat_a_dd, lon_a_dd, lat_b_dd, lon_b_dd) = match parse_dms_row(&r) {
+                    Ok(v) => v,
+                    Err(e) => {
                         invalid += 1;
+
                         if cli.strict {
                             return Err(AppError::InvalidDms {
                                 line: line_no,
@@ -146,14 +139,9 @@ fn main() -> Result<(), AppError> {
                 };
 
                 // Parse DDM coordinates.
-                let (lat_a_dd, lon_a_dd, lat_b_dd, lon_b_dd) = match (
-                    ddm_to_dd(&r.lat_a, CoordinateKind::Latitude),
-                    ddm_to_dd(&r.lon_a, CoordinateKind::Longitude),
-                    ddm_to_dd(&r.lat_b, CoordinateKind::Latitude),
-                    ddm_to_dd(&r.lon_b, CoordinateKind::Longitude),
-                ) {
-                    (Ok(a), Ok(b), Ok(c), Ok(d)) => (a, b, c, d),
-                    (Err(e), _, _, _) | (_, Err(e), _, _) | (_, _, Err(e), _) | (_, _, _, Err(e)) => {
+                let (lat_a_dd, lon_a_dd, lat_b_dd, lon_b_dd) = match parse_ddm_row(&r) {
+                    Ok(v) => v,
+                    Err(e) => {
                         invalid += 1;
                         if cli.strict {
                             return Err(AppError::InvalidDdm {
@@ -216,52 +204,19 @@ fn main() -> Result<(), AppError> {
     Ok(())
 }
 
-// Process one normalized geo entry.
-fn process_geo(
-    writer: &mut Writer<File>,
-    geo: &NormalizedGeo,
-    id: &mut u64,
-    strict: bool,
-    invalid: &mut u64,
-) -> Result<(), AppError> {
-    // Compute distance.
-    let dist_km = round(haversine(geo.a.lat.dd, geo.a.lon.dd, geo.b.lat.dd, geo.b.lon.dd)?, 2);
-    // Compute proximity comparison.
-    let nearly = Nearly::compute_nearly(
-        geo.a.lat.dd,
-        geo.a.lon.dd,
-        geo.b.lat.dd,
-        geo.b.lon.dd,
-        GeoTolerance::DEFAULT,
-    );
-
-    let distance_metrics = DistanceMetrics {
-        km: dist_km,
-        miles: round(dist_km * KM_TO_MILES, 2),
-        nearly,
-    };
-
-    // Write output row.
-    if let Err(e) = write_output(writer, geo, &distance_metrics, *id) {
-        if strict {
-            return Err(e.into());
-        }
-        *invalid += 1;
-        return Ok(());
-    }
-
-    *id += 1;
-    Ok(())
-}
-
 /* ---------------- TEST ---------------- */
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::error::DdmError;
-    use crate::error::DmsError;
-    use crate::geo::coordinate::CoordField;
+    use crate::error::{DdmError, DmsError};
+    use crate::{
+        geo::{
+            coordinate::{CoordField, CoordinateKind},
+            ddm::ddm_to_dd,
+            dms::dms_to_dd,
+        },
+        util::{haversine, round},
+    };
 
     /* --- round() --------------------*/
     #[test]

@@ -1,3 +1,3 @@
 // src/pipeline/mod.rs
-pub mod normalized;
-pub mod writer;
+pub mod parser;
+pub mod process;
