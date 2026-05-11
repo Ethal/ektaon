@@ -14,6 +14,7 @@ use crate::{
 };
 
 // Build a fully normalized geo structure.
+#[allow(clippy::too_many_arguments)]
 pub fn build_normalized_geo(
     name_a: String,
     lat_a_in: String,

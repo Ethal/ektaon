@@ -5,6 +5,7 @@ use thiserror::Error;
 use crate::geo::coordinate::CoordField;
 
 // Application-level errors.
+#[allow(clippy::enum_variant_names)]
 #[derive(Error, Debug)]
 pub enum AppError {
     #[error("I/O error: {0}")]
@@ -33,6 +34,7 @@ pub enum AppError {
 }
 
 // Errors specific to DDM parsing.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Error)]
 pub enum DdmError {
     #[error("invalid DMS format")]
@@ -44,6 +46,7 @@ pub enum DdmError {
 }
 
 // Errors specific to DMS parsing.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Error)]
 pub enum DmsError {
     #[error("invalid DMS format")]
@@ -55,6 +58,7 @@ pub enum DmsError {
 }
 
 // Errors related to numeric values and geographic limits.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Error)]
 pub enum CoordError {
     #[error("coordinate out of range")]
@@ -70,6 +74,7 @@ pub enum CoordError {
 }
 
 // Errors specific to Haversine calculation.
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Error)]
 pub enum HaversineError {
     #[error("invalid distance")]

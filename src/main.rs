@@ -1,5 +1,5 @@
 // src/main.rs
-#![allow(clippy::too_many_arguments)]
+
 /*
 ARCHITECTURE OVERVIEW
 
