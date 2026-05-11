@@ -39,7 +39,6 @@ impl fmt::Display for CoordField {
 }
 
 // Internal normalized representation of a parsed coordinate.
-// This structure is NOT exposed outside this module.
 #[derive(PartialEq)]
 pub struct Coordinate {
     pub deg: f64,

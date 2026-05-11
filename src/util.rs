@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-use crate::{error::HaversineError, geo::coordinate::CoordinateKind};
+use crate::error::HaversineError;
 
 /* ---------------- CONSTANTES ---------------- */
 
@@ -12,16 +12,6 @@ const GEO_PRECISION: f64 = 1e-10;
 const EARTH_RADIUS_KM: f64 = 6371.0;
 // Conversion factor kilometers → miles.
 pub const KM_TO_MILES: f64 = 0.621371;
-
-/* ---------------- NUMERIC UTILS -------------- */
-
-// Rounding of a floating-point number to N decimal places (max 10).
-// Intentional limit to avoid excessively large exponents.
-pub fn round(value: f64, decimals: u32) -> f64 {
-    let precision = decimals.min(10);
-    let factor = 10_f64.powi(precision as i32);
-    (value * factor).round() / factor
-}
 
 /* ---------------- GEO DISTANCE--------------- */
 
@@ -95,22 +85,13 @@ impl Nearly {
         (a - b).abs() <= tol.deg
     }
 }
-/* ---------------- FORMATTING ---------------- */
 
-// Converts decimal degrees to a DMS string.
-// This function does not perform validation.
-pub fn dd_to_dms(value: f64, kind: CoordinateKind) -> String {
-    let dir = if kind == CoordinateKind::Latitude {
-        if value >= 0.0 { 'N' } else { 'S' }
-    } else {
-        if value >= 0.0 { 'E' } else { 'W' }
-    };
+/* ---------------- NUMERIC UTILS -------------- */
 
-    let abs = value.abs();
-    let deg = abs.floor();
-    let min_f = (abs - deg) * 60.0;
-    let min = min_f.floor();
-    let sec = (min_f - min) * 60.0;
-
-    format!("{}°{}'{:.2}\"{}", deg as i32, min as i32, sec, dir)
+// Rounding of a floating-point number to N decimal places (max 10).
+// Intentional limit to avoid excessively large exponents.
+pub fn round(value: f64, decimals: u32) -> f64 {
+    let precision = decimals.min(10);
+    let factor = 10_f64.powi(precision as i32);
+    (value * factor).round() / factor
 }
