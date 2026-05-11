@@ -29,23 +29,26 @@ Key design choices:
 The main module focuses on orchestration and I/O only.
 */
 
+use clap::Parser;
+use csv::{ReaderBuilder, Writer};
 use std::collections::HashSet;
 use std::fs::File;
-use std::path::PathBuf;
 
-use clap::Parser;
-use clap::ValueEnum;
-use csv::{ReaderBuilder, Writer};
-use serde::{Deserialize, Serialize};
-
+mod cli;
 mod error;
 mod geo;
+mod models;
 mod util;
 
 use crate::{
     error::AppError,
     geo::{CoordinateKind, dd_to_dms, ddm_to_dd, dms_to_dd},
-    util::{GeoTolerance, KM_TO_MILES, Nearly, compute_nearly, haversine, round},
+    models::{
+        geo::{DistanceMetrics, NormalizedCoord, NormalizedGeo, NormalizedPoint},
+        input::{InputDecimal, InputString},
+        output::OutputRecord,
+    },
+    util::{GeoTolerance, KM_TO_MILES, compute_nearly, haversine, round},
 };
 
 /* ---------------- CONSTANTES ---------------- */
@@ -53,129 +56,11 @@ use crate::{
 // Required CSV headers (order-independent).
 const REQUIRED_HEADERS: &[&str] = &["name_a", "lat_a", "lon_a", "name_b", "lat_b", "lon_b"];
 
-/* ---------------- CLI ---------------- */
-
-// Command-line interface definition.
-#[derive(Parser, Debug)]
-#[command(author, version, about)]
-struct Cli {
-    /// Input CSV file path
-    #[arg(short, long)]
-    input: PathBuf,
-
-    /// Output CSV file path
-    #[arg(short, long)]
-    output: PathBuf,
-
-    /// Coordinate input format
-    #[arg(short = 'f', long, value_enum)]
-    input_format: InputFormat,
-
-    /// Strict mode: stop on first error
-    #[arg(long)]
-    strict: bool,
-}
-
-// Supported coordinate formats.
-#[derive(Copy, Clone, Debug, ValueEnum)]
-enum InputFormat {
-    Dd,
-    Dms,
-    Ddm,
-}
-
-/* ---------------- INPUT CSV STRUCTS ---------------- */
-
-// Decimal degrees input.
-#[derive(Debug, Deserialize)]
-struct InputDecimal {
-    name_a: String,
-    lat_a: f64,
-    lon_a: f64,
-    name_b: String,
-    lat_b: f64,
-    lon_b: f64,
-}
-
-// String-based input (DMS / DDM).
-#[derive(Debug, Deserialize)]
-struct InputString {
-    name_a: String,
-    lat_a: String,
-    lon_a: String,
-    name_b: String,
-    lat_b: String,
-    lon_b: String,
-}
-
-/* ---------------- OUTPUT CSV STRUCTS ---------------- */
-
-// Output CSV record (fully normalized).
-#[derive(Debug, Serialize)]
-struct OutputRecord {
-    id: u64,
-
-    name_a: String,
-    lat_a_in: String,
-    lon_a_in: String,
-    lat_a_dd: f64,
-    lon_a_dd: f64,
-    lat_a_dms: String,
-    lon_a_dms: String,
-
-    name_b: String,
-    lat_b_in: String,
-    lon_b_in: String,
-    lat_b_dd: f64,
-    lon_b_dd: f64,
-    lat_b_dms: String,
-    lon_b_dms: String,
-
-    distance_km: f64,
-    distance_miles: f64,
-    nearly_lat: bool,
-    nearly_lon: bool,
-    nearly_both: bool,
-}
-
-/* ---------------- NORMALIZED ---------------- */
-
-// Normalized coordinate representation.
-#[derive(Debug, Clone)]
-struct NormalizedCoord {
-    input: String, // original input string
-    dd: f64,       // decimal degrees
-    dms: String,   // formatted DMS output
-}
-
-// Normalized geographic point.
-#[derive(Debug, Clone)]
-struct NormalizedPoint {
-    name: String,
-    lat: NormalizedCoord,
-    lon: NormalizedCoord,
-}
-
-// Normalized geographic point.
-#[derive(Debug, Clone)]
-struct NormalizedGeo {
-    a: NormalizedPoint,
-    b: NormalizedPoint,
-}
-
-// Distance and comparison metrics.
-#[derive(Debug)]
-struct DistanceMetrics {
-    km: f64,
-    miles: f64,
-    nearly: Nearly,
-}
-
 /* ---------------- MAIN ---------------- */
 
 fn main() -> Result<(), AppError> {
     // Parse CLI arguments.
-    let cli = Cli::parse();
+    let cli = cli::Cli::parse();
 
     // CSV reader / writer setup.
     let mut reader = ReaderBuilder::new().has_headers(true).from_path(cli.input)?;
@@ -198,7 +83,7 @@ fn main() -> Result<(), AppError> {
 
     // Dispatch based on input format.
     match cli.input_format {
-        InputFormat::Dms => {
+        cli::InputFormat::Dms => {
             for row in reader.deserialize::<InputString>() {
                 line_no += 1;
                 let r = match row {
@@ -242,7 +127,7 @@ fn main() -> Result<(), AppError> {
                 process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;
             }
         }
-        InputFormat::Ddm => {
+        cli::InputFormat::Ddm => {
             for row in reader.deserialize::<InputString>() {
                 line_no += 1;
                 let r = match row {
@@ -286,7 +171,7 @@ fn main() -> Result<(), AppError> {
                 process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;
             }
         }
-        InputFormat::Dd => {
+        cli::InputFormat::Dd => {
             for row in reader.deserialize::<InputDecimal>() {
                 line_no += 1;
                 let r = match row {
