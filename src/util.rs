@@ -69,11 +69,6 @@ impl GeoTolerance {
     pub const DEFAULT: Self = Self { deg: 1e-6 };
 }
 
-// Simple comparison of two angular values.
-fn nearly_equal_deg(a: f64, b: f64, tol: GeoTolerance) -> bool {
-    (a - b).abs() <= tol.deg
-}
-
 // Structured result of geographical comparison.
 #[derive(Debug, Serialize)]
 pub struct Nearly {
@@ -84,17 +79,22 @@ pub struct Nearly {
 
 // Compare two geographical positions with a given tolerance.
 // Each axis is evaluated independently.
-pub fn compute_nearly(lat_a: f64, lon_a: f64, lat_b: f64, lon_b: f64, tol: GeoTolerance) -> Nearly {
-    let lat = nearly_equal_deg(lat_a, lat_b, tol);
-    let lon = nearly_equal_deg(lon_a, lon_b, tol);
+impl Nearly {
+    pub fn compute_nearly(lat_a: f64, lon_a: f64, lat_b: f64, lon_b: f64, tol: GeoTolerance) -> Self {
+        let lat = Self::nearly_equal_deg(lat_a, lat_b, tol);
+        let lon = Self::nearly_equal_deg(lon_a, lon_b, tol);
 
-    Nearly {
-        lat,
-        lon,
-        both: lat && lon,
+        Self {
+            lat,
+            lon,
+            both: lat && lon,
+        }
+    }
+    // Simple comparison of two angular values.
+    fn nearly_equal_deg(a: f64, b: f64, tol: GeoTolerance) -> bool {
+        (a - b).abs() <= tol.deg
     }
 }
-
 /* ---------------- FORMATTING ---------------- */
 
 // Converts decimal degrees to a DMS string.

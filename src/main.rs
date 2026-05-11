@@ -49,7 +49,7 @@ use crate::{
         input::{InputDecimal, InputString},
     },
     pipeline::writer::write_output,
-    util::{GeoTolerance, KM_TO_MILES, compute_nearly, dd_to_dms, haversine, round},
+    util::{GeoTolerance, KM_TO_MILES, Nearly, dd_to_dms, haversine, round},
 };
 
 /* ---------------- CONSTANTES ---------------- */
@@ -275,7 +275,7 @@ fn process_geo(
     // Compute distance.
     let dist_km = round(haversine(geo.a.lat.dd, geo.a.lon.dd, geo.b.lat.dd, geo.b.lon.dd)?, 2);
     // Compute proximity comparison.
-    let nearly = compute_nearly(
+    let nearly = Nearly::compute_nearly(
         geo.a.lat.dd,
         geo.a.lon.dd,
         geo.b.lat.dd,
