@@ -1,7 +1,8 @@
 // src/geo.rs
 
-use regex::Regex;
 use once_cell::sync::Lazy;
+use regex::Regex;
+use std::fmt;
 
 /* ---------------- DOMAIN TYPES ---------------- */
 
@@ -25,8 +26,8 @@ pub enum CoordField {
 
 // Human-readable representation of a coordinate field
 // used in error messages.
-impl std::fmt::Display for CoordField {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for CoordField {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             CoordField::Deg => "degrees",
             CoordField::Min => "minutes",
@@ -46,7 +47,6 @@ struct Coordinate {
     sec: f64,
     dir: char,
 }
-
 
 /* ---------------- LOW LEVEL VALIDATION ---------------- */
 
@@ -114,7 +114,6 @@ fn coordinate_to_dd(coord: Coordinate, kind: CoordinateKind) -> Result<f64, Coor
     }
 
     Ok(value)
-
 }
 
 /* ---------------- DMS ---------------- */
@@ -131,8 +130,9 @@ static DMS_RE: Lazy<Regex> = Lazy::new(|| {
             (.+?)      # secondes (brut)
             \s*["″]\s*
             (.)        # direction (brut)
-            \s*$"#
-    ).expect("Invalid DMS regex")
+            \s*$"#,
+    )
+    .expect("Invalid DMS regex")
 });
 
 // Errors specific to DMS parsing.
@@ -148,15 +148,20 @@ pub enum DmsError {
 
 // Parses a DMS string and converts it to decimal degrees.
 pub fn dms_to_dd(input: &str, kind: CoordinateKind) -> Result<f64, DmsError> {
-    let caps = DMS_RE.captures(input)
-        .ok_or(DmsError::InvalidFormat)?;
+    let caps = DMS_RE.captures(input).ok_or(DmsError::InvalidFormat)?;
 
     let deg_str = caps.get(1).ok_or(DmsError::InvalidFormat)?.as_str().trim();
-    let deg: f64 = deg_str.parse().map_err(|_| DmsError::InvalidField { field: CoordField::Deg })?;
-    let min_str= caps.get(2).ok_or(DmsError::InvalidFormat)?.as_str().trim();
-    let min: f64 = min_str.parse().map_err(|_| DmsError::InvalidField { field: CoordField::Min })?;
+    let deg: f64 = deg_str
+        .parse()
+        .map_err(|_| DmsError::InvalidField { field: CoordField::Deg })?;
+    let min_str = caps.get(2).ok_or(DmsError::InvalidFormat)?.as_str().trim();
+    let min: f64 = min_str
+        .parse()
+        .map_err(|_| DmsError::InvalidField { field: CoordField::Min })?;
     let sec_str = caps.get(3).ok_or(DmsError::InvalidFormat)?.as_str().trim();
-    let sec: f64 = sec_str.parse().map_err(|_| DmsError::InvalidField { field: CoordField::Sec })?;
+    let sec: f64 = sec_str
+        .parse()
+        .map_err(|_| DmsError::InvalidField { field: CoordField::Sec })?;
     let dir_str = caps.get(4).ok_or(DmsError::InvalidFormat)?.as_str().trim();
     let dir = dir_str
         .chars()
@@ -168,7 +173,7 @@ pub fn dms_to_dd(input: &str, kind: CoordinateKind) -> Result<f64, DmsError> {
         return Err(DmsError::InvalidFormat);
     }
 
-    let coord = Coordinate { deg, min, sec, dir};
+    let coord = Coordinate { deg, min, sec, dir };
     let value = coordinate_to_dd(coord, kind)?;
 
     Ok(value)
@@ -186,8 +191,9 @@ static DDM_RE: Lazy<Regex> = Lazy::new(|| {
             (.+?)      # minutes (brut)
             \s*['′]\s*
             (.)        # direction (brut)
-            \s*$"#
-    ).expect("Invalid DMS regex")
+            \s*$"#,
+    )
+    .expect("Invalid DMS regex")
 });
 
 // Errors specific to DDM parsing.
@@ -203,13 +209,16 @@ pub enum DdmError {
 
 // Parses a DDM string and converts it to decimal degrees.
 pub fn ddm_to_dd(input: &str, kind: CoordinateKind) -> Result<f64, DdmError> {
-    let caps = DDM_RE.captures(input)
-        .ok_or(DdmError::InvalidFormat)?;
+    let caps = DDM_RE.captures(input).ok_or(DdmError::InvalidFormat)?;
 
     let deg_str = caps.get(1).ok_or(DdmError::InvalidFormat)?.as_str().trim();
-    let deg: f64 = deg_str.parse().map_err(|_| DdmError::InvalidField { field:CoordField::Deg })?;
-    let min_str= caps.get(2).ok_or(DdmError::InvalidFormat)?.as_str().trim();
-    let min: f64 = min_str.parse().map_err(|_| DdmError::InvalidField { field:CoordField::Min })?;
+    let deg: f64 = deg_str
+        .parse()
+        .map_err(|_| DdmError::InvalidField { field: CoordField::Deg })?;
+    let min_str = caps.get(2).ok_or(DdmError::InvalidFormat)?.as_str().trim();
+    let min: f64 = min_str
+        .parse()
+        .map_err(|_| DdmError::InvalidField { field: CoordField::Min })?;
     let dir_str = caps.get(3).ok_or(DdmError::InvalidFormat)?.as_str().trim();
     let dir = dir_str
         .chars()
@@ -223,7 +232,7 @@ pub fn ddm_to_dd(input: &str, kind: CoordinateKind) -> Result<f64, DdmError> {
         return Err(DdmError::InvalidFormat);
     }
 
-    let coord = Coordinate { deg, min, sec, dir};
+    let coord = Coordinate { deg, min, sec, dir };
     let value = coordinate_to_dd(coord, kind)?;
 
     Ok(value)

@@ -1,10 +1,20 @@
+# directories
 /target
-Cargo.lock
+/workspace
+
+# files
 *.csv*
+*.txt
+
+# IDE
+.zed
+
+# Os
+.DS_Store
+
+# To be kept
+!Cargo.lock
 !dd.csv
 !dd_edge_case.csv
 !ddm.csv
 !dms.csv
-clean.sh
-.DS_Store
-*.txt

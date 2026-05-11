@@ -29,44 +29,29 @@ Key design choices:
 The main module focuses on orchestration and I/O only.
 */
 
+use std::collections::HashSet;
 use std::fs::File;
 use std::path::PathBuf;
-use std::collections::HashSet;
 
 use clap::Parser;
 use clap::ValueEnum;
 use csv::{ReaderBuilder, Writer};
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
-mod util;
-use crate::util::KM_TO_MILES;
-use crate::util::HaversineError;
-use crate::util::GeoTolerance;
-use crate::util::Nearly;
-use crate::util::round;
-use crate::util::haversine;
-use crate::util::compute_nearly;
-
+mod error;
 mod geo;
-use crate::geo::CoordinateKind;
-use crate::geo::dd_to_dms;
-use crate::geo::dms_to_dd;
-use crate::geo::ddm_to_dd;
-use crate::geo::DmsError;
-use crate::geo::DdmError;
+mod util;
+
+use crate::{
+    error::AppError,
+    geo::{CoordinateKind, dd_to_dms, ddm_to_dd, dms_to_dd},
+    util::{GeoTolerance, KM_TO_MILES, Nearly, compute_nearly, haversine, round},
+};
 
 /* ---------------- CONSTANTES ---------------- */
 
 // Required CSV headers (order-independent).
-const REQUIRED_HEADERS: &[&str] = &[
-    "name_a",
-    "lat_a",
-    "lon_a",
-    "name_b",
-    "lat_b",
-    "lon_b",
-];
+const REQUIRED_HEADERS: &[&str] = &["name_a", "lat_a", "lon_a", "name_b", "lat_b", "lon_b"];
 
 /* ---------------- CLI ---------------- */
 
@@ -83,7 +68,7 @@ struct Cli {
     output: PathBuf,
 
     /// Coordinate input format
-    #[arg(short ='f', long, value_enum)]
+    #[arg(short = 'f', long, value_enum)]
     input_format: InputFormat,
 
     /// Strict mode: stop on first error
@@ -97,45 +82,6 @@ enum InputFormat {
     Dd,
     Dms,
     Ddm,
-}
-
-/* ---------------- MAIN ERROR ---------------- */
-
-// Application-level errors.
-#[derive(Error, Debug)]
-enum AppError {
-    #[error("I/O error: {0}")]
-    Io(#[from] std::io::Error),
-
-    #[error("CSV error: {0}")]
-    Csv(#[from] csv::Error),
-
-    #[error("Invalid header (missing or unreadable)")]
-    InvalidHeader,
-
-    #[error("Missing header field '{0}'")]
-    MissingHeaderField(String),
-
-    #[error("Invalid coordinate format on line {line} (expected: {expected})")]
-    MixedCoordinateFormat {
-        line: usize,
-        expected: &'static str,
-    },
-
-    #[error("Line {line}: invalid DMS ({source})")]
-    InvalidDms {
-        line: usize,
-        source: DmsError,
-    },
-
-    #[error("Line {line}: invalid DDM ({source})")]
-    InvalidDdm {
-        line: usize,
-        source: DdmError,
-    },
-
-    #[error("Distance calculation error: {0}")]
-    Distance(#[from] HaversineError),
 }
 
 /* ---------------- INPUT CSV STRUCTS ---------------- */
@@ -197,9 +143,9 @@ struct OutputRecord {
 // Normalized coordinate representation.
 #[derive(Debug, Clone)]
 struct NormalizedCoord {
-    input: String,  // original input string
-    dd: f64,        // decimal degrees
-    dms: String,    // formatted DMS output
+    input: String, // original input string
+    dd: f64,       // decimal degrees
+    dms: String,   // formatted DMS output
 }
 
 // Normalized geographic point.
@@ -228,19 +174,15 @@ struct DistanceMetrics {
 /* ---------------- MAIN ---------------- */
 
 fn main() -> Result<(), AppError> {
-
     // Parse CLI arguments.
     let cli = Cli::parse();
 
     // CSV reader / writer setup.
-    let mut reader = ReaderBuilder::new()
-        .has_headers(true)
-        .from_path(cli.input)?;
+    let mut reader = ReaderBuilder::new().has_headers(true).from_path(cli.input)?;
     let mut writer = Writer::from_writer(File::create(cli.output)?);
 
     // Validate required headers.
-    let headers = reader.headers()
-        .map_err(|_| AppError::InvalidHeader)?;
+    let headers = reader.headers().map_err(|_| AppError::InvalidHeader)?;
 
     let headers: HashSet<_> = headers.iter().collect();
     for &h in REQUIRED_HEADERS {
@@ -281,10 +223,7 @@ fn main() -> Result<(), AppError> {
                     dms_to_dd(&r.lon_b, CoordinateKind::Longitude),
                 ) {
                     (Ok(a), Ok(b), Ok(c), Ok(d)) => (a, b, c, d),
-                    (Err(e), _, _, _)
-                    | (_, Err(e), _, _)
-                    | (_, _, Err(e), _)
-                    | (_, _, _, Err(e)) => {
+                    (Err(e), _, _, _) | (_, Err(e), _, _) | (_, _, Err(e), _) | (_, _, _, Err(e)) => {
                         invalid += 1;
                         if cli.strict {
                             return Err(AppError::InvalidDms {
@@ -297,16 +236,7 @@ fn main() -> Result<(), AppError> {
                 };
 
                 let geo = build_normalized_geo(
-                    r.name_a,
-                    r.lat_a,
-                    r.lon_a,
-                    lat_a_dd,
-                    lon_a_dd,
-                    r.name_b,
-                    r.lat_b,
-                    r.lon_b,
-                    lat_b_dd,
-                    lon_b_dd,
+                    r.name_a, r.lat_a, r.lon_a, lat_a_dd, lon_a_dd, r.name_b, r.lat_b, r.lon_b, lat_b_dd, lon_b_dd,
                 );
 
                 process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;
@@ -337,31 +267,20 @@ fn main() -> Result<(), AppError> {
                     ddm_to_dd(&r.lon_b, CoordinateKind::Longitude),
                 ) {
                     (Ok(a), Ok(b), Ok(c), Ok(d)) => (a, b, c, d),
-                    (Err(e), _, _, _)
-                    | (_, Err(e), _, _)
-                    | (_, _, Err(e), _)
-                    | (_, _, _, Err(e)) => {
+                    (Err(e), _, _, _) | (_, Err(e), _, _) | (_, _, Err(e), _) | (_, _, _, Err(e)) => {
                         invalid += 1;
                         if cli.strict {
                             return Err(AppError::InvalidDdm {
                                 line: line_no,
                                 source: e,
-                            });                    }
+                            });
+                        }
                         continue;
                     }
                 };
 
                 let geo = build_normalized_geo(
-                    r.name_a,
-                    r.lat_a,
-                    r.lon_a,
-                    lat_a_dd,
-                    lon_a_dd,
-                    r.name_b,
-                    r.lat_b,
-                    r.lon_b,
-                    lat_b_dd,
-                    lon_b_dd,
+                    r.name_a, r.lat_a, r.lon_a, lat_a_dd, lon_a_dd, r.name_b, r.lat_b, r.lon_b, lat_b_dd, lon_b_dd,
                 );
 
                 process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;
@@ -467,12 +386,8 @@ fn process_geo(
     strict: bool,
     invalid: &mut u64,
 ) -> Result<(), AppError> {
-
     // Compute distance.
-    let dist_km = round(
-        haversine(geo.a.lat.dd, geo.a.lon.dd, geo.b.lat.dd, geo.b.lon.dd,)?,
-        2,
-    );
+    let dist_km = round(haversine(geo.a.lat.dd, geo.a.lon.dd, geo.b.lat.dd, geo.b.lon.dd)?, 2);
     // Compute proximity comparison.
     let nearly = compute_nearly(
         geo.a.lat.dd,
@@ -485,7 +400,7 @@ fn process_geo(
     let distance_metrics = DistanceMetrics {
         km: dist_km,
         miles: round(dist_km * KM_TO_MILES, 2),
-        nearly: nearly,
+        nearly,
     };
 
     // Write output row.
@@ -508,7 +423,6 @@ fn write_output(
     distance_metrics: &DistanceMetrics,
     id: u64,
 ) -> Result<(), csv::Error> {
-
     writer.serialize(OutputRecord {
         id,
         name_a: geo.a.name.clone(),
@@ -541,6 +455,8 @@ fn write_output(
 mod tests {
     use super::*;
     use crate::geo::CoordField;
+    use crate::geo::DdmError;
+    use crate::geo::DmsError;
 
     /* --- round() --------------------*/
     #[test]
@@ -666,7 +582,6 @@ mod tests {
             dms_to_dd("48c°57'0\"N", CoordinateKind::Latitude),
             Err(DmsError::InvalidField { field: CoordField::Deg })
         ));
-
     }
 
     /* --- DDM --------------------*/
@@ -722,7 +637,6 @@ mod tests {
 
     #[test]
     fn test_ddm_to_distance_integration() -> Result<(), Box<dyn std::error::Error>> {
-
         let turing_eiffel_lat = "48° 51.492' N";
         let turing_eiffel_lon = "2° 17.652' E";
 
@@ -748,5 +662,4 @@ mod tests {
 
         Ok(())
     }
-
 }

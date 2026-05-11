@@ -1,6 +1,6 @@
 //src/util.rs
 
-use serde::{Serialize};
+use serde::Serialize;
 
 /* ---------------- CONSTANTES ---------------- */
 
@@ -38,7 +38,6 @@ pub enum HaversineError {
 // Inputs in decimal degrees.
 // Output in kilometers.
 pub fn haversine(lat1_deg: f64, lon1_deg: f64, lat2_deg: f64, lon2_deg: f64) -> Result<f64, HaversineError> {
-
     // Conversion degrés → radians
     let lat1 = lat1_deg.to_radians();
     let lon1 = lon1_deg.to_radians();
@@ -50,8 +49,7 @@ pub fn haversine(lat1_deg: f64, lon1_deg: f64, lat2_deg: f64, lon2_deg: f64) -> 
     let dlon = lon2 - lon1;
 
     // Haversine formula.
-    let a = (dlat / 2.0).sin().powi(2)
-        + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
+    let a = (dlat / 2.0).sin().powi(2) + lat1.cos() * lat2.cos() * (dlon / 2.0).sin().powi(2);
 
     let distance = 2.0 * EARTH_RADIUS_KM * a.sqrt().atan2((1.0 - a).sqrt());
 
@@ -60,7 +58,7 @@ pub fn haversine(lat1_deg: f64, lon1_deg: f64, lat2_deg: f64, lon2_deg: f64) -> 
         return Err(HaversineError::InvalidDistance);
     }
     if distance < -GEO_PRECISION {
-        return Err(HaversineError::NegativeDistance {dist: distance});
+        return Err(HaversineError::NegativeDistance { dist: distance });
     }
 
     Ok(distance)
@@ -95,13 +93,7 @@ pub struct Nearly {
 
 // Compare two geographical positions with a given tolerance.
 // Each axis is evaluated independently.
-pub fn compute_nearly(
-    lat_a: f64,
-    lon_a: f64,
-    lat_b: f64,
-    lon_b: f64,
-    tol: GeoTolerance,
-) -> Nearly {
+pub fn compute_nearly(lat_a: f64, lon_a: f64, lat_b: f64, lon_b: f64, tol: GeoTolerance) -> Nearly {
     let lat = nearly_equal_deg(lat_a, lat_b, tol);
     let lon = nearly_equal_deg(lon_a, lon_b, tol);
 
