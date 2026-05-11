@@ -1,6 +1,6 @@
 # Development
 
-## Architecture
+## 🏗️ Architecture
 ```
            ┌────────────┐
            │   DMS str  │
@@ -19,7 +19,7 @@
 
 ---
 
-## Input Format
+## 📥 Input Format
 
 | Format  | Example        | Meaning                     |
 | ------- | -------------- | --------------------------- |
@@ -40,6 +40,12 @@
   - Unicode
   - boundaries
   - calculations
+- Automatic coordinate format detection is intentionally not supported.
+  > Reason:
+    - ambiguous inputs
+    - deterministic parsing
+    - predictable validation
+    - simpler error handling
 
 ---
 
@@ -52,9 +58,23 @@
 
 ---
 
-## ✅ Project status
+## 📁 Source tree
 
-- ✔ Stable architecture
-- ✔ Robust parsing
-- ✔ Explicit errors
-- ✔ Ready for real-world use
+```text
+src/
+├── geo/       # Coordinate parsing & conversion
+├── models/    # Input/output normalized structures
+├── pipeline/  # Parsing and processing pipeline
+├── util.rs    # Math & helper utilities
+├── cli.rs     # Clap CLI definitions
+└── error.rs   # Application errors
+```
+
+## 🚨 Error strategy
+
+The pipeline supports two modes:
+
+- permissive: invalid rows are skipped
+- strict: first invalid row aborts processing
+
+Errors are handled at row level to preserve batch processing behavior.

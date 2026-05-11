@@ -1,5 +1,9 @@
 # 📍 Geographic Distance Calculator (ektaon)
 
+> 🌐 [ektaon.ethal.fr](https://ektaon.ethal.fr)
+
+![Rust](https://img.shields.io/badge/Rust-1.95.0-c5a059?logo=rust&style=flat-square) ![Rust Edition](https://img.shields.io/badge/edition-2024-orange?style=flat-square) ![License](https://img.shields.io/badge/License-MIT-gray?style=flat-square) ![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-black?logo=windows&style=flat-square)
+
 This CLI tool calculates the distance between two geographic points from a CSV file using the **Haversine** formula.
 
 The coordinates are read in a **unique and explicit** format, defined by the command-line options.
@@ -219,10 +223,42 @@ Options:
 
 ```bash
 cargo run -- \
-  --input points.csv \
-  --output distances.csv \
+  --input examples/dd_edge_case.csv \
+  --output distance.csv \
   --input-format=ddm \
   --strict
 ```
+
+- Example of an output file (from the input file: examples/dd_edge_case.csv)
+
+```csv
+id,name_a,lat_a_in,lon_a_in,lat_a_dd,lon_a_dd,lat_a_dms,lon_a_dms,name_b,lat_b_in,lon_b_in,lat_b_dd,lon_b_dd,lat_b_dms,lon_b_dms,distance_km,distance_miles,nearly_lat,nearly_lon,nearly_both
+1,Paris,48.858056,2.2945,48.858056,2.2945,"48°51'29.00""N","2°17'40.20""E",Lyon,45.764043,4.835659,45.764043,4.835659,"45°45'50.55""N","4°50'8.37""E",393.73,244.65,false,false,false
+2,Eiffel Tower,48.858056,2.2945,48.858056,2.2945,"48°51'29.00""N","2°17'40.20""E",Copy of Eiffel,48.858056,2.2945,48.858056,2.2945,"48°51'29.00""N","2°17'40.20""E",0.0,0.0,true,true,true
+3,Point A,48.858056,2.2945,48.858056,2.2945,"48°51'29.00""N","2°17'40.20""E",Point A Micro,48.8580560001,2.2945000001,48.858056,2.2945,"48°51'29.00""N","2°17'40.20""E",0.0,0.0,true,true,true
+4,Equator Start,0,0,0.0,0.0,"0°0'0.00""N","0°0'0.00""E",Equator End,0,1,0.0,1.0,"0°0'0.00""N","1°0'0.00""E",111.19,69.09,true,false,false
+5,North Pole,90,0,90.0,0.0,"90°0'0.00""N","0°0'0.00""E",South Pole,-90,0,-90.0,0.0,"90°0'0.00""S","0°0'0.00""E",20015.09,12436.8,false,true,false
+6,Greenwich,0,0,0.0,0.0,"0°0'0.00""N","0°0'0.00""E",Pacific Antipode,0,180,0.0,180.0,"0°0'0.00""N","180°0'0.00""E",20015.09,12436.8,true,false,false
+7,East Side,10,179,10.0,179.0,"10°0'0.00""N","179°0'0.00""E",West Side,10,-179,10.0,-179.0,"10°0'0.00""N","179°0'0.00""W",219.01,136.09,true,false,false
+```
+
+---
+
+## 📁 Example files
+
+The repository provides example CSV files in:
+
+```text
+examples/
+```
+
+| File | Purpose |
+|---|---|
+| `dd.csv` | Standard decimal degree examples |
+| `ddm.csv` | Standard DDM examples |
+| `dms.csv` | Standard DMS examples |
+| `dd_edge_case.csv` | Geographic boundary edge cases |
+| `dms_mixed.csv` | Mixed valid/invalid rows for strict/permissive mode testing |
+| `empty.csv` | for header requirement testing |
 
 ---
