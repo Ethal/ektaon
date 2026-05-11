@@ -4,8 +4,6 @@ use std::fmt;
 
 use crate::error::CoordError;
 
-/* ---------------- DOMAIN TYPES ---------------- */
-
 // Indicates whether a coordinate is a latitude or a longitude.
 // Used to apply correct bounds and valid directions.
 #[derive(PartialEq)]
