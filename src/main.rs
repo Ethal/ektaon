@@ -42,13 +42,13 @@ mod util;
 
 use crate::{
     error::AppError,
-    geo::{CoordinateKind, dd_to_dms, ddm_to_dd, dms_to_dd},
+    geo::{coordinate::CoordinateKind, ddm::ddm_to_dd, dms::dms_to_dd},
     models::{
         geo::{DistanceMetrics, NormalizedCoord, NormalizedGeo, NormalizedPoint},
         input::{InputDecimal, InputString},
         output::OutputRecord,
     },
-    util::{GeoTolerance, KM_TO_MILES, compute_nearly, haversine, round},
+    util::{GeoTolerance, KM_TO_MILES, compute_nearly, dd_to_dms, haversine, round},
 };
 
 /* ---------------- CONSTANTES ---------------- */
@@ -339,9 +339,9 @@ fn write_output(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::geo::CoordField;
-    use crate::geo::DdmError;
-    use crate::geo::DmsError;
+    use crate::error::DdmError;
+    use crate::error::DmsError;
+    use crate::geo::coordinate::CoordField;
 
     /* --- round() --------------------*/
     #[test]

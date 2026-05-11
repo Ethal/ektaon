@@ -2,6 +2,8 @@
 
 use serde::Serialize;
 
+use crate::{error::HaversineError, geo::coordinate::CoordinateKind};
+
 /* ---------------- CONSTANTES ---------------- */
 
 // Overall numerical precision used for geographical comparisons.
@@ -22,17 +24,6 @@ pub fn round(value: f64, decimals: u32) -> f64 {
 }
 
 /* ---------------- GEO DISTANCE--------------- */
-
-// Errors specific to Haversine calculation.
-#[derive(Debug, thiserror::Error)]
-pub enum HaversineError {
-    #[error("invalid distance")]
-    InvalidDistance,
-
-    // A negative distance should never happen.
-    #[error("negative distance`{dist}`")]
-    NegativeDistance { dist: f64 },
-}
 
 // Calculation of the great circle distance (Haversine).
 // Inputs in decimal degrees.
@@ -102,4 +93,24 @@ pub fn compute_nearly(lat_a: f64, lon_a: f64, lat_b: f64, lon_b: f64, tol: GeoTo
         lon,
         both: lat && lon,
     }
+}
+
+/* ---------------- FORMATTING ---------------- */
+
+// Converts decimal degrees to a DMS string.
+// This function does not perform validation.
+pub fn dd_to_dms(value: f64, kind: CoordinateKind) -> String {
+    let dir = if kind == CoordinateKind::Latitude {
+        if value >= 0.0 { 'N' } else { 'S' }
+    } else {
+        if value >= 0.0 { 'E' } else { 'W' }
+    };
+
+    let abs = value.abs();
+    let deg = abs.floor();
+    let min_f = (abs - deg) * 60.0;
+    let min = min_f.floor();
+    let sec = (min_f - min) * 60.0;
+
+    format!("{}°{}'{:.2}\"{}", deg as i32, min as i32, sec, dir)
 }
