@@ -47,11 +47,10 @@ pub fn load_csv_rows(path: &Path, strict: bool) -> Result<(usize, Vec<InputRow>)
                 continue;
             }
         };
-        let coord = InputRow {
+        coords.push(InputRow {
             row: line_no,
             coordinate: r,
-        };
-        coords.push(coord);
+        });
     }
 
     Ok((invalid, coords))
