@@ -19,6 +19,10 @@ pub struct Cli {
     pub output: PathBuf,
 
     /// Coordinate input format
+    #[arg(short = 'c', long, value_enum)]
+    pub coord_format: CoordinateFormat,
+
+    /// input format
     #[arg(short = 'f', long, value_enum)]
     pub input_format: InputFormat,
 
@@ -29,8 +33,14 @@ pub struct Cli {
 
 // Supported coordinate formats.
 #[derive(Copy, Clone, Debug, ValueEnum)]
-pub enum InputFormat {
+pub enum CoordinateFormat {
     Dd,
     Dms,
     Ddm,
+}
+
+// Supported input formats.
+#[derive(Copy, Clone, Debug, ValueEnum)]
+pub enum InputFormat {
+    Csv,
 }

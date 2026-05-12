@@ -29,8 +29,7 @@ Key design choices:
 The main module focuses on orchestration and I/O only.
 */
 use clap::Parser;
-use csv::{ReaderBuilder, Writer};
-use std::collections::HashSet;
+use csv::Writer;
 use std::fs::File;
 
 mod cli;
@@ -38,21 +37,17 @@ mod error;
 mod geo;
 mod models;
 mod pipeline;
+mod transport;
 mod util;
 
 use crate::{
     error::AppError,
-    models::input::{InputDecimal, InputString},
     pipeline::{
-        parser::{parse_ddm_row, parse_dms_row},
+        parser::{parse_dd_row, parse_ddm_row, parse_dms_row},
         process::{build_normalized_geo, process_geo},
     },
+    transport::csv::load_csv_rows,
 };
-
-/* ---------------- CONSTANTES ---------------- */
-
-// Required CSV headers (order-independent).
-const REQUIRED_HEADERS: &[&str] = &["name_a", "lat_a", "lon_a", "name_b", "lat_b", "lon_b"];
 
 /* ---------------- MAIN ---------------- */
 
@@ -60,50 +55,30 @@ fn main() -> Result<(), AppError> {
     // Parse CLI arguments.
     let cli = cli::Cli::parse();
 
-    // CSV reader / writer setup.
-    let mut reader = ReaderBuilder::new().has_headers(true).from_path(cli.input)?;
+    // CSV writer setup for output.
     let mut writer = Writer::from_writer(File::create(cli.output)?);
 
-    // Validate required headers.
-    let headers = reader.headers().map_err(|_| AppError::InvalidHeader)?;
-
-    let headers: HashSet<_> = headers.iter().collect();
-    for &h in REQUIRED_HEADERS {
-        if !headers.contains(h) {
-            return Err(AppError::MissingHeaderField(h.to_string()));
-        }
-    }
+    // Parsing as per input format
+    let (invalid_parse, input_rows) = match cli.input_format {
+        cli::InputFormat::Csv => load_csv_rows(&cli.input, cli.strict)?,
+    };
 
     // Processing counters.
     let mut id: u64 = 1;
-    let mut invalid: u64 = 0;
-    let mut line_no = 1;
+    let mut invalid: usize = invalid_parse;
+    let mut line_no: usize;
 
     // Dispatch based on input format.
-    match cli.input_format {
-        cli::InputFormat::Dms => {
-            for row in reader.deserialize::<InputString>() {
-                line_no += 1;
-                let r = match row {
-                    Ok(v) => v,
-                    Err(_) => {
-                        invalid += 1;
-                        if cli.strict {
-                            return Err(AppError::MixedCoordinateFormat {
-                                line: line_no,
-                                expected: "DMS",
-                            });
-                        }
-                        continue;
-                    }
-                };
-
+    match cli.coord_format {
+        cli::CoordinateFormat::Dms => {
+            for row in input_rows {
+                line_no = row.row;
+                let coord = row.coordinate;
                 // Parse DMS coordinates.
-                let (lat_a_dd, lon_a_dd, lat_b_dd, lon_b_dd) = match parse_dms_row(&r) {
+                let (lat_a_dd, lon_a_dd, lat_b_dd, lon_b_dd) = match parse_dms_row(&coord) {
                     Ok(v) => v,
                     Err(e) => {
                         invalid += 1;
-
                         if cli.strict {
                             return Err(AppError::InvalidDms {
                                 line: line_no,
@@ -115,31 +90,27 @@ fn main() -> Result<(), AppError> {
                 };
 
                 let geo = build_normalized_geo(
-                    r.name_a, r.lat_a, r.lon_a, lat_a_dd, lon_a_dd, r.name_b, r.lat_b, r.lon_b, lat_b_dd, lon_b_dd,
+                    coord.name_a,
+                    coord.lat_a,
+                    coord.lon_a,
+                    lat_a_dd,
+                    lon_a_dd,
+                    coord.name_b,
+                    coord.lat_b,
+                    coord.lon_b,
+                    lat_b_dd,
+                    lon_b_dd,
                 );
 
                 process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;
             }
         }
-        cli::InputFormat::Ddm => {
-            for row in reader.deserialize::<InputString>() {
-                line_no += 1;
-                let r = match row {
-                    Ok(v) => v,
-                    Err(_) => {
-                        invalid += 1;
-                        if cli.strict {
-                            return Err(AppError::MixedCoordinateFormat {
-                                line: line_no,
-                                expected: "DDM",
-                            });
-                        }
-                        continue;
-                    }
-                };
-
+        cli::CoordinateFormat::Ddm => {
+            for row in input_rows {
+                line_no = row.row;
+                let coord = row.coordinate;
                 // Parse DDM coordinates.
-                let (lat_a_dd, lon_a_dd, lat_b_dd, lon_b_dd) = match parse_ddm_row(&r) {
+                let (lat_a_dd, lon_a_dd, lat_b_dd, lon_b_dd) = match parse_ddm_row(&coord) {
                     Ok(v) => v,
                     Err(e) => {
                         invalid += 1;
@@ -154,23 +125,34 @@ fn main() -> Result<(), AppError> {
                 };
 
                 let geo = build_normalized_geo(
-                    r.name_a, r.lat_a, r.lon_a, lat_a_dd, lon_a_dd, r.name_b, r.lat_b, r.lon_b, lat_b_dd, lon_b_dd,
+                    coord.name_a,
+                    coord.lat_a,
+                    coord.lon_a,
+                    lat_a_dd,
+                    lon_a_dd,
+                    coord.name_b.clone(),
+                    coord.lat_b,
+                    coord.lon_b,
+                    lat_b_dd,
+                    lon_b_dd,
                 );
 
                 process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;
             }
         }
-        cli::InputFormat::Dd => {
-            for row in reader.deserialize::<InputDecimal>() {
-                line_no += 1;
-                let r = match row {
+        cli::CoordinateFormat::Dd => {
+            for row in input_rows {
+                line_no = row.row;
+                let coord = row.coordinate;
+                // Parse DD coordinates.
+                let (lat_a_dd, lon_a_dd, lat_b_dd, lon_b_dd) = match parse_dd_row(&coord) {
                     Ok(v) => v,
-                    Err(_) => {
+                    Err(e) => {
                         invalid += 1;
                         if cli.strict {
-                            return Err(AppError::MixedCoordinateFormat {
+                            return Err(AppError::InvalidDd {
                                 line: line_no,
-                                expected: "dd",
+                                source: e,
                             });
                         }
                         continue;
@@ -178,16 +160,16 @@ fn main() -> Result<(), AppError> {
                 };
 
                 let geo = build_normalized_geo(
-                    r.name_a,
-                    r.lat_a.to_string(),
-                    r.lon_a.to_string(),
-                    r.lat_a,
-                    r.lon_a,
-                    r.name_b,
-                    r.lat_b.to_string(),
-                    r.lon_b.to_string(),
-                    r.lat_b,
-                    r.lon_b,
+                    coord.name_a,
+                    coord.lat_a.to_string(),
+                    coord.lon_a.to_string(),
+                    lat_a_dd,
+                    lon_a_dd,
+                    coord.name_b,
+                    coord.lat_b.to_string(),
+                    coord.lon_b.to_string(),
+                    lat_b_dd,
+                    lon_b_dd,
                 );
 
                 process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;

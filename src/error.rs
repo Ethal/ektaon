@@ -17,17 +17,20 @@ pub enum AppError {
     #[error("Invalid header (missing or unreadable)")]
     InvalidHeader,
 
+    #[error("Invalid row {line} (missing or unreadable)")]
+    InvalidRow { line: usize },
+
     #[error("Missing header field '{0}'")]
     MissingHeaderField(String),
-
-    #[error("Invalid coordinate format on line {line} (expected: {expected})")]
-    MixedCoordinateFormat { line: usize, expected: &'static str },
 
     #[error("Line {line}: invalid DMS ({source})")]
     InvalidDms { line: usize, source: DmsError },
 
     #[error("Line {line}: invalid DDM ({source})")]
     InvalidDdm { line: usize, source: DdmError },
+
+    #[error("Line {line}: invalid DD ({source})")]
+    InvalidDd { line: usize, source: DdError },
 
     #[error("Distance calculation error: {0}")]
     Distance(#[from] HaversineError),
@@ -52,6 +55,18 @@ pub enum DmsError {
     #[error("invalid DMS format")]
     InvalidFormat,
     #[error("invalid DMS field: {field}")]
+    InvalidField { field: CoordField },
+    #[error("invalid coord ({0})")]
+    InvalidCoord(#[from] CoordError),
+}
+
+// Errors specific to DMS parsing.
+#[allow(clippy::enum_variant_names)]
+#[derive(Debug, Error)]
+pub enum DdError {
+    #[error("invalid DD format")]
+    InvalidFormat,
+    #[error("invalid DDD field: {field}")]
     InvalidField { field: CoordField },
     #[error("invalid coord ({0})")]
     InvalidCoord(#[from] CoordError),

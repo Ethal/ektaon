@@ -68,7 +68,7 @@ pub fn process_geo(
     geo: &NormalizedGeo,
     id: &mut u64,
     strict: bool,
-    invalid: &mut u64,
+    invalid: &mut usize,
 ) -> Result<(), AppError> {
     // Compute distance.
     let dist_km = round(haversine(geo.a.lat.dd, geo.a.lon.dd, geo.b.lat.dd, geo.b.lon.dd)?, 2);

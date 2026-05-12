@@ -48,7 +48,12 @@ pub fn ddm_to_dd(input: &str, kind: CoordinateKind) -> Result<f64, DdmError> {
         return Err(DdmError::InvalidFormat);
     }
 
-    let coord = Coordinate { deg, min, sec, dir };
+    let coord = Coordinate {
+        deg,
+        min,
+        sec,
+        dir: Some(dir),
+    };
     let value = coordinate_to_dd(coord, kind)?;
 
     Ok(value)

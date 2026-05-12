@@ -42,7 +42,7 @@ pub struct Coordinate {
     pub deg: f64,
     pub min: f64,
     pub sec: f64,
-    pub dir: char,
+    pub dir: Option<char>,
 }
 
 /* ---------------- LOW LEVEL VALIDATION ---------------- */
@@ -52,17 +52,18 @@ pub struct Coordinate {
 pub fn coordinate_to_dd(coord: Coordinate, kind: CoordinateKind) -> Result<f64, CoordError> {
     let eps = 1e-12;
 
-    // Validation degree / minutes / seconds
-    if coord.deg < 0.0 {
-        return Err(CoordError::InvalidDegree { deg: coord.deg });
+    if coord.dir.is_some() {
+        // Validation degree / minutes / seconds
+        if coord.deg < 0.0 {
+            return Err(CoordError::InvalidDegree { deg: coord.deg });
+        }
+        if coord.min < 0.0 || coord.min >= 60.0 {
+            return Err(CoordError::InvalidMinutes { min: coord.min });
+        }
+        if coord.sec < 0.0 || coord.sec >= 60.0 {
+            return Err(CoordError::InvalidSeconds { sec: coord.sec });
+        }
     }
-    if coord.min < 0.0 || coord.min >= 60.0 {
-        return Err(CoordError::InvalidMinutes { min: coord.min });
-    }
-    if coord.sec < 0.0 || coord.sec >= 60.0 {
-        return Err(CoordError::InvalidSeconds { sec: coord.sec });
-    }
-
     // Validation of geographical boundaries
     if kind == CoordinateKind::Latitude {
         if coord.deg > 90.0 + eps {
@@ -71,8 +72,10 @@ pub fn coordinate_to_dd(coord: Coordinate, kind: CoordinateKind) -> Result<f64, 
         if (coord.deg - 90.0).abs() < eps && (coord.min > 0.0 || coord.sec > 0.0) {
             return Err(CoordError::OutOfRange { deg: coord.deg });
         }
-        if !matches!(coord.dir, 'N' | 'S') {
-            return Err(CoordError::InvalidDirection(coord.dir));
+        if let Some(dir) = coord.dir {
+            if !matches!(dir, 'N' | 'S') {
+                return Err(CoordError::InvalidDirection(dir));
+            }
         }
     }
     if kind == CoordinateKind::Longitude {
@@ -82,8 +85,10 @@ pub fn coordinate_to_dd(coord: Coordinate, kind: CoordinateKind) -> Result<f64, 
         if (coord.deg - 180.0).abs() < eps && (coord.min > 0.0 || coord.sec > 0.0) {
             return Err(CoordError::OutOfRange { deg: coord.deg });
         }
-        if !matches!(coord.dir, 'E' | 'O' | 'W') {
-            return Err(CoordError::InvalidDirection(coord.dir));
+        if let Some(dir) = coord.dir {
+            if !matches!(dir, 'E' | 'O' | 'W') {
+                return Err(CoordError::InvalidDirection(dir));
+            }
         }
     }
 
@@ -91,9 +96,10 @@ pub fn coordinate_to_dd(coord: Coordinate, kind: CoordinateKind) -> Result<f64, 
     let mut value = coord.deg + (coord.min / 60.0) + (coord.sec / 3600.0);
 
     // Sign as per direction
-    if matches!(coord.dir, 'S' | 'O' | 'W') {
-        value = -value;
+    if let Some(dir) = coord.dir {
+        if matches!(dir, 'S' | 'O' | 'W') {
+            value = -value;
+        }
     }
-
     Ok(value)
 }

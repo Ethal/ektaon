@@ -52,7 +52,12 @@ pub fn dms_to_dd(input: &str, kind: CoordinateKind) -> Result<f64, DmsError> {
         return Err(DmsError::InvalidFormat);
     }
 
-    let coord = Coordinate { deg, min, sec, dir };
+    let coord = Coordinate {
+        deg,
+        min,
+        sec,
+        dir: Some(dir),
+    };
     let value = coordinate_to_dd(coord, kind)?;
 
     Ok(value)
