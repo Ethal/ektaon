@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 
-/* ---------------- OUTPUT CSV STRUCTS ---------------- */
+/* ---------------- OUTPUT CSV STRUCT ---------------- */
 
 // Output CSV record (fully normalized).
 #[derive(Debug, Serialize)]
