@@ -1,6 +1,6 @@
 //src/util.rs
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::HaversineError;
 
@@ -60,7 +60,7 @@ impl GeoTolerance {
 }
 
 // Structured result of geographical comparison.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Nearly {
     pub lat: bool,
     pub lon: bool,
