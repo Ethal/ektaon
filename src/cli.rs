@@ -11,36 +11,44 @@ use std::path::PathBuf;
 #[command(author, version, about)]
 pub struct Cli {
     /// Input CSV file path
-    #[arg(short, long)]
+    #[arg(short = 'i', long)]
     pub input: PathBuf,
 
     /// Output CSV file path
-    #[arg(short, long)]
+    #[arg(short = 'o', long)]
     pub output: PathBuf,
 
-    /// Coordinate input format
+    /// Coordinate format
     #[arg(short = 'c', long, value_enum)]
     pub coord_format: CoordinateFormat,
 
-    /// input format
+    /// Input format
     #[arg(short = 'f', long, value_enum)]
     pub input_format: InputFormat,
 
     /// Strict mode: stop on first error
-    #[arg(long)]
+    #[arg(short = 's', long)]
     pub strict: bool,
 }
 
 // Supported coordinate formats.
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum CoordinateFormat {
+    /// degree decimal
     Dd,
+    /// degree minute second
     Dms,
+    /// degree decimal minute
     Ddm,
 }
 
 // Supported input formats.
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum InputFormat {
+    /// Csv file
     Csv,
+    /// Json file
+    Json,
+    /// Json lines file
+    Jsonl,
 }

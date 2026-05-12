@@ -11,6 +11,9 @@ pub enum AppError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+
     #[error("CSV error: {0}")]
     Csv(#[from] csv::Error),
 
@@ -19,6 +22,9 @@ pub enum AppError {
 
     #[error("Invalid row {line} (missing or unreadable)")]
     InvalidRow { line: usize },
+
+    #[error("Invalid json row {line} (missing or unreadable)")]
+    InvalidJsonRow { line: usize },
 
     #[error("Missing header field '{0}'")]
     MissingHeaderField(String),

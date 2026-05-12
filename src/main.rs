@@ -46,7 +46,10 @@ use crate::{
         parser::{parse_dd_row, parse_ddm_row, parse_dms_row},
         process::{build_normalized_geo, process_geo},
     },
-    transport::csv::load_csv_rows,
+    transport::{
+        csv::load_csv_rows,
+        json::{load_json, load_jsonl},
+    },
 };
 
 /* ---------------- MAIN ---------------- */
@@ -61,6 +64,8 @@ fn main() -> Result<(), AppError> {
     // Parsing as per input format
     let (invalid_parse, input_rows) = match cli.input_format {
         cli::InputFormat::Csv => load_csv_rows(&cli.input, cli.strict)?,
+        cli::InputFormat::Json => load_json(&cli.input)?,
+        cli::InputFormat::Jsonl => load_jsonl(&cli.input, cli.strict)?,
     };
 
     // Processing counters.
