@@ -23,8 +23,12 @@ pub struct Cli {
     pub coord_format: CoordinateFormat,
 
     /// Input format
-    #[arg(short = 'f', long, value_enum)]
+    #[arg(long, value_enum)]
     pub input_format: InputFormat,
+
+    /// Output format
+    #[arg(long, value_enum)]
+    pub output_format: OutputFormat,
 
     /// Strict mode: stop on first error
     #[arg(short = 's', long)]
@@ -51,4 +55,13 @@ pub enum InputFormat {
     Json,
     /// Json lines file
     Jsonl,
+}
+
+// Supported input formats.
+#[derive(Copy, Clone, Debug, ValueEnum)]
+pub enum OutputFormat {
+    /// Csv file (Base Project Normalized - Flat)
+    Csv,
+    /// GeoJson file (RFC 7946)
+    Geo,
 }

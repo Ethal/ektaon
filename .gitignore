@@ -5,6 +5,7 @@
 # files
 *.csv*
 *.txt
+*.json
 
 # IDE
 .zed
@@ -14,9 +15,4 @@
 
 # To be kept
 !Cargo.lock
-!dd.csv
-!dd_edge_case.csv
-!ddm.csv
-!dms.csv
-!dms_mixed.csv
-!empty.csv
+!examples/*.*

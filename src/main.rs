@@ -29,8 +29,6 @@ Key design choices:
 The main module focuses on orchestration and I/O only.
 */
 use clap::Parser;
-use csv::Writer;
-use std::fs::File;
 
 mod cli;
 mod error;
@@ -44,11 +42,11 @@ use crate::{
     error::AppError,
     pipeline::{
         parser::{parse_dd_row, parse_ddm_row, parse_dms_row},
-        process::{build_normalized_geo, process_geo},
+        process::{build_geo_json, build_normalized_geo, process_geo},
     },
     transport::{
-        csv::load_csv_rows,
-        json::{load_json, load_jsonl},
+        csv::{export_csv, load_csv},
+        json::{export_json, load_json, load_jsonl},
     },
 };
 
@@ -58,12 +56,9 @@ fn main() -> Result<(), AppError> {
     // Parse CLI arguments.
     let cli = cli::Cli::parse();
 
-    // CSV writer setup for output.
-    let mut writer = Writer::from_writer(File::create(cli.output)?);
-
     // Parsing as per input format
     let (invalid_parse, input_rows) = match cli.input_format {
-        cli::InputFormat::Csv => load_csv_rows(&cli.input, cli.strict)?,
+        cli::InputFormat::Csv => load_csv(&cli.input, cli.strict)?,
         cli::InputFormat::Json => load_json(&cli.input)?,
         cli::InputFormat::Jsonl => load_jsonl(&cli.input, cli.strict)?,
     };
@@ -72,6 +67,7 @@ fn main() -> Result<(), AppError> {
     let mut id: u64 = 1;
     let mut invalid: usize = invalid_parse;
     let mut line_no: usize;
+    let mut outputs = Vec::new();
 
     // Dispatch based on input format.
     match cli.coord_format {
@@ -107,7 +103,17 @@ fn main() -> Result<(), AppError> {
                     lon_b_dd,
                 );
 
-                process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;
+                let record = match process_geo(&geo, &mut id) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        invalid += 1;
+                        if cli.strict {
+                            return Err(e);
+                        }
+                        continue;
+                    }
+                };
+                outputs.push(record);
             }
         }
         cli::CoordinateFormat::Ddm => {
@@ -142,7 +148,17 @@ fn main() -> Result<(), AppError> {
                     lon_b_dd,
                 );
 
-                process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;
+                let record = match process_geo(&geo, &mut id) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        invalid += 1;
+                        if cli.strict {
+                            return Err(e);
+                        }
+                        continue;
+                    }
+                };
+                outputs.push(record);
             }
         }
         cli::CoordinateFormat::Dd => {
@@ -177,12 +193,29 @@ fn main() -> Result<(), AppError> {
                     lon_b_dd,
                 );
 
-                process_geo(&mut writer, &geo, &mut id, cli.strict, &mut invalid)?;
+                let record = match process_geo(&geo, &mut id) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        invalid += 1;
+                        if cli.strict {
+                            return Err(e);
+                        }
+                        continue;
+                    }
+                };
+                outputs.push(record);
             }
         }
     }
 
-    writer.flush()?;
+    // write output as per format
+    match cli.output_format {
+        cli::OutputFormat::Csv => export_csv(&outputs, &cli.output)?,
+        cli::OutputFormat::Geo => {
+            let datas = build_geo_json(&outputs);
+            export_json(&datas, &cli.output)?;
+        }
+    };
 
     if invalid > 0 {
         eprintln!("{} ignored line(s)", invalid);

@@ -72,10 +72,10 @@ pub fn coordinate_to_dd(coord: Coordinate, kind: CoordinateKind) -> Result<f64, 
         if (coord.deg - 90.0).abs() < eps && (coord.min > 0.0 || coord.sec > 0.0) {
             return Err(CoordError::OutOfRange { deg: coord.deg });
         }
-        if let Some(dir) = coord.dir {
-            if !matches!(dir, 'N' | 'S') {
-                return Err(CoordError::InvalidDirection(dir));
-            }
+        if let Some(dir) = coord.dir
+            && !matches!(dir, 'N' | 'S')
+        {
+            return Err(CoordError::InvalidDirection(dir));
         }
     }
     if kind == CoordinateKind::Longitude {
@@ -85,10 +85,10 @@ pub fn coordinate_to_dd(coord: Coordinate, kind: CoordinateKind) -> Result<f64, 
         if (coord.deg - 180.0).abs() < eps && (coord.min > 0.0 || coord.sec > 0.0) {
             return Err(CoordError::OutOfRange { deg: coord.deg });
         }
-        if let Some(dir) = coord.dir {
-            if !matches!(dir, 'E' | 'O' | 'W') {
-                return Err(CoordError::InvalidDirection(dir));
-            }
+        if let Some(dir) = coord.dir
+            && !matches!(dir, 'E' | 'O' | 'W')
+        {
+            return Err(CoordError::InvalidDirection(dir));
         }
     }
 
@@ -96,10 +96,10 @@ pub fn coordinate_to_dd(coord: Coordinate, kind: CoordinateKind) -> Result<f64, 
     let mut value = coord.deg + (coord.min / 60.0) + (coord.sec / 3600.0);
 
     // Sign as per direction
-    if let Some(dir) = coord.dir {
-        if matches!(dir, 'S' | 'O' | 'W') {
-            value = -value;
-        }
+    if let Some(dir) = coord.dir
+        && matches!(dir, 'S' | 'O' | 'W')
+    {
+        value = -value;
     }
     Ok(value)
 }

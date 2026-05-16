@@ -1,13 +1,15 @@
 // src/pipeline/normalized
 
-use csv::Writer;
-use std::fs::File;
+use serde_json::json;
 
 use crate::{
     error::AppError,
     geo::coordinate::CoordinateKind,
     models::{
-        geo::{DistanceMetrics, NormalizedCoord, NormalizedGeo, NormalizedPoint},
+        geo::{
+            DistanceMetrics, Feature, FeatureCollection, GeoJson, Geometry, NormalizedCoord, NormalizedGeo,
+            NormalizedPoint,
+        },
         output::OutputRecord,
     },
     util::{GeoTolerance, KM_TO_MILES, Nearly, haversine, round},
@@ -63,13 +65,7 @@ pub fn build_normalized_geo(
 }
 
 // Process one normalized geo entry.
-pub fn process_geo(
-    writer: &mut Writer<File>,
-    geo: &NormalizedGeo,
-    id: &mut u64,
-    strict: bool,
-    invalid: &mut usize,
-) -> Result<(), AppError> {
+pub fn process_geo(geo: &NormalizedGeo, id: &mut u64) -> Result<OutputRecord, AppError> {
     // Compute distance.
     let dist_km = round(haversine(geo.a.lat.dd, geo.a.lon.dd, geo.b.lat.dd, geo.b.lon.dd)?, 2);
     // Compute proximity comparison.
@@ -87,27 +83,50 @@ pub fn process_geo(
         nearly,
     };
 
-    // Write output row.
-    if let Err(e) = write_output(writer, geo, &distance_metrics, *id) {
-        if strict {
-            return Err(e.into());
-        }
-        *invalid += 1;
-        return Ok(());
-    }
-
+    // build output record.
+    let output_record = build_output_record(geo, &distance_metrics, *id);
     *id += 1;
-    Ok(())
+
+    Ok(output_record)
 }
 
-// Serialize one CSV output row.
-fn write_output(
-    writer: &mut Writer<File>,
-    geo: &NormalizedGeo,
-    distance_metrics: &DistanceMetrics,
-    id: u64,
-) -> Result<(), csv::Error> {
-    writer.serialize(OutputRecord {
+pub fn build_geo_json(outputs: &[OutputRecord]) -> GeoJson {
+    let mut features = Vec::new();
+    let mut id: u64 = 0;
+    for row in outputs {
+        id += 1;
+        let feature = Feature {
+            id: Some(id.to_string()),
+            properties: Some(json!({
+                "name_a": row.name_a,
+                "lon_a_in": row.lon_a_in,
+                "lat_a_in": row.lat_a_in,
+                "name_b": row.name_b,
+                "lon_b_in": row.lon_b_in,
+                "lat_b_in": row.lat_b_in,
+                "distance_km": row.distance_km  ,
+                "distance_miles": row.distance_miles,
+                "nearly_lat": row.nearly_lat,
+                "nearly_lon": row.nearly_lon,
+                "nearly_both": row.nearly_both,
+            })),
+
+            geometry: Some(Geometry::LineString(vec![
+                // RFC7946 => [longitude, latitude]
+                (row.lon_a_dd, row.lat_a_dd),
+                (row.lon_b_dd, row.lat_b_dd),
+            ])),
+        };
+
+        features.push(feature);
+    }
+
+    GeoJson::FeatureCollection(FeatureCollection { features })
+}
+
+// Serialize one record.
+fn build_output_record(geo: &NormalizedGeo, distance_metrics: &DistanceMetrics, id: u64) -> OutputRecord {
+    OutputRecord {
         id,
         name_a: geo.a.name.clone(),
         lat_a_in: geo.a.lat.input.clone(),
@@ -128,9 +147,7 @@ fn write_output(
         nearly_lat: distance_metrics.nearly.lat,
         nearly_lon: distance_metrics.nearly.lon,
         nearly_both: distance_metrics.nearly.both,
-    })?;
-
-    Ok(())
+    }
 }
 
 /* ---------------- FORMATTING ---------------- */
