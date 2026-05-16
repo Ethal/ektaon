@@ -16,28 +16,39 @@ Internally, all coordinates are normalized to decimal degrees before any computa
 
 - Reads a CSV file containing coordinates A → B
 - Supports multiple coordinate formats (via CLI options)
-- Internal conversion to degrees decimal (DD)
+- Internal conversion to decimal degrees (DD)
 - Distance calculation:
   - kilometers
   - miles
-- Writes an enriched CSV output
+- Writes an enriched CSV, JSON or GeoJSON as per RFC 7946
 - Strict or permissive mode
 - Ignore or block on invalid lines
 - Unicode support for DMS/DDM formats (`° ′ ″`)
-- Average Earth radius: **6,371 km (WGS84 approximation)**
+- Average Earth radius: **6,371 km (spherical approximation)**
+
+---
+
+## 📦 Supported Formats
+
+| Type | Supported |
+|---|---|
+| Coordinate formats | DD, DDM, DMS |
+| Input formats | CSV, JSON, JSONL |
+| Output formats | CSV, GeoJSON |
+
 ---
 
 ## 🧭 Supported Coordinate Formats
 
 The **coordinate format is global** and must be specified via the CLI.
 
-The CSV file **cannot contain mixed formats**.
+The Input files **cannot contain mixed coordinate formats**.
 
 ### 1️⃣ Decimal Degrees (DD)
 
 Option:
 ```
---input-format=dd
+--coord-format=dd
 ```
 
 Valid examples:
@@ -49,13 +60,11 @@ Valid examples:
 - latitude: `[-90 ; +90]`
 - longitude: `[-180 ; +180]`
 
----
-
 ### 2️⃣ Degrees / Minutes / Seconds (DMS)
 
 Option:
 ```
---input-format=dms
+--coord-format=dms
 ```
 
 Valid examples:
@@ -67,8 +76,8 @@ Valid examples:
 ```
 
 ✔ Accepted directions:
-- latitude: `N`, `S`
 - longitude: `E`, `W`, `O`
+- latitude: `N`, `S`
 
 ✔ Accepted Unicode symbols:
 
@@ -76,13 +85,11 @@ Valid examples:
 - minutes: `'` or `′`
 - seconds: `"` or `″`
 
----
-
 ### 3️⃣ Degrees / Decimal Minutes (DDM)
 
 Option:
 ```
---input-format=ddm
+--coord-format=ddm
 ```
 
 Valid examples:
@@ -94,8 +101,8 @@ Valid examples:
 ```
 
 ✔ Accepted directions:
-- latitude: `N`, `S`
 - longitude: `E`, `W`, `O`
+- latitude: `N`, `S`
 
 ✔ Accepted Unicode symbols:
 
@@ -104,11 +111,11 @@ Valid examples:
 
 ---
 
-## 📄 Input CSV File Format
+## 📄 Input CSV/JSON/JSONL File Format
 
-The CSV file must contain **at least** the following columns:
+The file must contain **at least** the following data:
 
-| Column | Description |
+| Data | Description |
 |------|-----------|
 | `name_a` | Name of point A |
 | `lat_a` | Latitude of point A |
@@ -119,7 +126,7 @@ The CSV file must contain **at least** the following columns:
 
 The CSV file **shall contain headers** matching the expected column names.
 
-👉 The `lat_*` and `lon_*` fields must conform to the **format chosen via the CLI**.
+👉 The `lat_*` and `lon_*` fields must conform to the **coordinate format chosen via the CLI**.
 
 ---
 
@@ -127,27 +134,55 @@ The CSV file **shall contain headers** matching the expected column names.
 
 The output file contains:
 
-- all input columns
+- all input datas
 - a unique identifier (`id`)
 - normalized coordinates
 - calculated distances
 - near-equality flags
 
-Columns added:
+Additional fields:
 
-| Column | Description |
+| Data | Description |
 |------|-----------|
 | `id` | Line ID |
 | `distance_km` | Distance in kilometers |
 | `distance_miles` | Distance in miles |
-| `lat_a_dd` | Latitude A in degrees decimal |
-| `lon_a_dd` | Longitude A in degrees decimal |
-| `lat_b_dd` | Latitude B in degrees decimal |
-| `lon_b_dd` | Longitude B in degrees decimal |
+| `lat_a_dd` | Latitude A in decimal degrees |
+| `lon_a_dd` | Longitude A in decimal degrees |
+| `lat_b_dd` | Latitude B in decimal degrees |
+| `lon_b_dd` | Longitude B in decimal degrees |
 | `lat_a_dms` | Latitude A in degrees minutes seconds |
 | `lon_a_dms` | Longitude A in degrees minutes seconds |
 | `lat_b_dms` | Latitude B in degrees minutes seconds |
 | `lon_b_dms` | Longitude B in degrees minutes seconds |
+| `nearly_lat` | Latitude A and B are almost identical|
+| `nearly_lon` | Longitude A and B are almost identical |
+| `nearly_both` | Point A and B are almost identical |
+
+Tolerance for nearly is **1e-6** (~11 cm at the equator) 
+
+---
+
+## 📤 Output GeoJSON file as per RFC 7946 
+
+The `type` of the GeoJSON is `FeatureCollection`.
+
+The `feature` contains: 
+  - `id`, a unique identifier(number), 
+  - `properties`, 
+    - all input data
+    - calculated distances
+    - near-equality flags
+  - `geometry`,
+    - `type` is `LineString` 
+    - `coordinates` as `[[lon_a_dd, lat_a_dd],[lon_b_dd,lat_b_dd]]`
+
+Propertiess added:
+
+| Properties | Description |
+|------|-----------|
+| `distance_km` | Distance in kilometers |
+| `distance_miles` | Distance in miles |
 | `nearly_lat` | Latitude A and B are almost identical|
 | `nearly_lon` | Longitude A and B are almost identical |
 | `nearly_both` | Point A and B are almost identical |
@@ -187,6 +222,10 @@ Option:
 - A detailed error message is displayed:
   - line number
   - exact cause (format, minutes, seconds, direction…)
+
+- Strict mode is recommended for data validation pipelines.
+- Permissive mode is useful for large heterogeneous datasets.
+
 ---
 
 ## ❌ Policy on mixed formats
@@ -208,28 +247,32 @@ Invalid example:
 ## 🏁 Usage
 
 ```bash
-Usage: ektaon [OPTIONS] --input <INPUT> --output <OUTPUT> --input-format <INPUT_FORMAT>
+Usage: ektaon [OPTIONS] --input <INPUT> --output <OUTPUT> --coord-format <COORD_FORMAT> --input-format <INPUT_FORMAT>
 
 Options:
-  -i, --input <INPUT>                Input CSV file path
-  -o, --output <OUTPUT>              Output CSV file path
-  -f, --input-format <INPUT_FORMAT>  Coordinate input format [possible values: dd, dms, ddm]
-      --strict                       Strict mode: stop on first error
-  -h, --help                         Print help
-  -V, --version                      Print version
+  -i, --input <INPUT>                   Input file path
+  -o, --output <OUTPUT>                 Output file path
+  -c, --coord-format <COORD_FORMAT>     Coordinate format [possible values: dd, dms, ddm]
+      --input-format <INPUT_FORMAT>     Input format [possible values: csv, json, jsonl]
+      --output-format <OUTPUT_FORMAT>   Output format [possible values: csv, geo(GeoJSON compliant with RFC 7946.)]
+  -s  --strict                          Strict mode: stop on first error
+  -h, --help                            Print help
+  -V, --version                         Print version
 ```
 
 - Example of use
 
 ```bash
+
 cargo run -- \
-  --input examples/dd_edge_case.csv \
-  --output distance.csv \
-  --input-format=ddm \
-  --strict
+  --input examples/dms.json \
+  --output output.geojson \
+  --coord-format=dms \
+  --input-format=json \
+  --output-format=geo
 ```
 
-- Example of an output file (from the input file: examples/dd_edge_case.csv)
+- Example of an output csv file (from the input file: examples/dd_edge_case.csv)
 
 ```csv
 id,name_a,lat_a_in,lon_a_in,lat_a_dd,lon_a_dd,lat_a_dms,lon_a_dms,name_b,lat_b_in,lon_b_in,lat_b_dd,lon_b_dd,lat_b_dms,lon_b_dms,distance_km,distance_miles,nearly_lat,nearly_lon,nearly_both
@@ -240,6 +283,46 @@ id,name_a,lat_a_in,lon_a_in,lat_a_dd,lon_a_dd,lat_a_dms,lon_a_dms,name_b,lat_b_i
 5,North Pole,90,0,90.0,0.0,"90°0'0.00""N","0°0'0.00""E",South Pole,-90,0,-90.0,0.0,"90°0'0.00""S","0°0'0.00""E",20015.09,12436.8,false,true,false
 6,Greenwich,0,0,0.0,0.0,"0°0'0.00""N","0°0'0.00""E",Pacific Antipode,0,180,0.0,180.0,"0°0'0.00""N","180°0'0.00""E",20015.09,12436.8,true,false,false
 7,East Side,10,179,10.0,179.0,"10°0'0.00""N","179°0'0.00""E",West Side,10,-179,10.0,-179.0,"10°0'0.00""N","179°0'0.00""W",219.01,136.09,true,false,false
+```
+
+- Example of an output GeoJSON file (from the input file: examples/dms.csv)
+
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": "1",
+      "properties": {
+        "distance_km": 392.93,
+        "distance_miles": 244.16,
+        "lat_a_in": "48°51'24.12\"N",
+        "lat_b_in": "45°45'0.00\"N",
+        "lon_a_in": "2°20'54.96\"E",
+        "lon_b_in": "4°50'0.00\"E",
+        "name_a": "Paris",
+        "name_b": "Lyon",
+        "nearly_both": false,
+        "nearly_lat": false,
+        "nearly_lon": false
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            2.3486,
+            48.8567
+          ],
+          [
+            4.833333,
+            45.75
+          ]
+        ]
+      }
+    },
+    {...}
+  ]
+}
 ```
 
 ---
@@ -257,8 +340,10 @@ examples/
 | `dd.csv` | Standard decimal degree examples |
 | `ddm.csv` | Standard DDM examples |
 | `dms.csv` | Standard DMS examples |
+| `dms.json` | Standard DMS examples |
+| `dms.jsonl` | Standard DMS examples |
 | `dd_edge_case.csv` | Geographic boundary edge cases |
 | `dms_mixed.csv` | Mixed valid/invalid rows for strict/permissive mode testing |
-| `empty.csv` | for header requirement testing |
+| `empty.csv` | For header requirement testing |
 
 ---
