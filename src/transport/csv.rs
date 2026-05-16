@@ -34,10 +34,8 @@ pub fn load_csv(path: &Path, strict: bool) -> Result<(usize, Vec<InputRow>), App
 
     // Processing counters.
     let mut invalid: usize = 0;
-    let mut line_no = 1; // one line is consume in the reader for the header_validator.
 
-    for row in reader.deserialize::<RawCoordinate>() {
-        line_no += 1;
+    for (line_no, row) in (2..).zip(reader.deserialize::<RawCoordinate>()) {
         let r = match row {
             Ok(v) => v,
             Err(_) => {

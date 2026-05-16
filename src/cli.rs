@@ -10,11 +10,11 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 pub struct Cli {
-    /// Input CSV file path
+    /// Input file path
     #[arg(short = 'i', long)]
     pub input: PathBuf,
 
-    /// Output CSV file path
+    /// Output file path
     #[arg(short = 'o', long)]
     pub output: PathBuf,
 
