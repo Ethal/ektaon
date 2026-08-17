@@ -65,7 +65,7 @@ pub struct Feature {
 }
 
 // [longitude, latitude]
-pub type Position = (f64, f64);
+type Position = (f64, f64);
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", content = "coordinates")]

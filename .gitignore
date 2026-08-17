@@ -2,11 +2,6 @@
 /target
 /workspace
 
-# files
-*.csv*
-*.txt
-*.json
-
 # IDE
 .zed
 
@@ -14,5 +9,3 @@
 .DS_Store
 
 # To be kept
-!Cargo.lock
-!examples/*.*

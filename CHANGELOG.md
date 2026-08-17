@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- Made `Position` private in `models/geo.rs`.`
+
 ---
 ## [1.2.0] — 2026-05-16
 
