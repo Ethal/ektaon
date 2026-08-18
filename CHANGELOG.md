@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Made `Position` private in `models/geo.rs`.`
+- Use of `std::sync::Lazylock` instead of the crate `once_cell` in `geo/dms.rs` and `geo/dds.rs`
 
 ---
 ## [1.2.0] — 2026-05-16

@@ -1,7 +1,7 @@
 // src/geo/ddm.rs
 
-use once_cell::sync::Lazy;
 use regex::Regex;
+use std::sync::LazyLock;
 
 use crate::error::DdmError;
 use crate::geo::coordinate::{CoordField, Coordinate, CoordinateKind, coordinate_to_dd};
@@ -10,7 +10,7 @@ use crate::geo::coordinate::{CoordField, Coordinate, CoordinateKind, coordinate_
 
 // Regex for Degrees / Decimal Minutes format.
 // Supports ASCII and Unicode symbols.
-static DDM_RE: Lazy<Regex> = Lazy::new(|| {
+static DDM_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r#"(?ix)^\s*
             (.+?)      # degrés (brut)
